@@ -156,6 +156,72 @@ print(sum_test_NMF)
 
 #%%
 """
-QUESTION 3
+QUESTION 4
 """
 print("----------- QUESTION 4 -----------")
+from sklearn.svm import LinearSVC
+from sklearn.metrics import auc, confusion_matrix, recall_score, roc_curve, precision_score, accuracy_score
+
+cat_0 = ['comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware']
+cat_1 = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey']
+
+classes = ['Computer Technology', 'Recreational Activity']
+
+# Classify the dataset into 2 categories
+def classify(dataset):
+    cat = []
+    for i in dataset.target:
+        if(i < 4):
+            cat.append(0)
+        else: 
+            cat.append(1)
+    return(cat)
+
+
+X_train_cat = classify(train_dataset)    
+X_test_cat = classify(test_dataset)              
+
+svm_hard = LinearSVC(C = 1000)
+svm_soft = LinearSVC(C = 1)
+
+def question4(svm):
+    svm.fit(X_train_LSI, X_train_cat)	
+    
+    # ----------------------
+    # ROC Curves
+    test_score = svm_hard.decision_function(X_test_LSI)
+    FPR, TPR, threshold = roc_curve(X_test_cat, test_score)
+    
+    # Plot ROC
+    fig,ax = plt.subplots()
+    plt.plot(FPR, TPR)
+    plt.xlim([-0.05, 1.05])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve (LSI)')
+    plt.grid()
+    plt.show()
+    
+    # ----------------------
+    # Metrics
+    test_predict = svm_hard.predict(X_test_LSI)
+    
+    confusionMatrix = confusion_matrix(X_test_cat, test_predict)
+    accuracy = accuracy_score(X_test_cat, test_predict)
+    recall = recall_score(X_test_cat, test_predict)
+    precision = precision_score(X_test_cat, test_predict)
+    f1_score = 2/((1/recall) + (1/precision))
+    
+    print('Confusion Matrix: ')
+    print(confusionMatrix)
+    print('Accuracy:', accuracy)
+    print('Recall:', recall)
+    print('Precision:', precision)
+    print('F1-Score:', f1_score)
+
+
+print('\nHard Margin ----------------------------')
+question4(svm_hard)
+print('\nSoft Margin ----------------------------')
+question4(svm_soft)
