@@ -1,23 +1,39 @@
 # -*- coding: utf-8 -*-
 
-from sklearn.datasets import fetch_20newsgroups
-from sklearn.feature_extraction import text
 import nltk
-nltk.download('wordnet')
 nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('stopwords')
-from nltk.stem import WordNetLemmatizer
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction import text
 from nltk import pos_tag
 from nltk.corpus import stopwords
 from string import punctuation
 from matplotlib import pyplot as plt
 import numpy as np
-from sklearn.datasets import fetch_20newsgroups
+from sklearn.decomposition import TruncatedSVD
+from sklearn.decomposition import NMF
+from sklearn.svm import LinearSVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import ShuffleSplit
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import auc
+from sklearn.preprocessing import label_binarize
+import itertools
+from scipy import interp
+plt.rcParams['figure.figsize'] = [12, 8]  #set image size for display
 
 """
 QUESTION 1
 """
+
 print("----------- QUESTION 1 -----------")
 newsgroups_train = fetch_20newsgroups(subset='train',random_state=42)
 dictt = {}
@@ -99,12 +115,9 @@ print(X_test_tfidf.shape)
 """
 QUESTION 3
 """
+
 print("----------- QUESTION 3 -----------")
-
 # LSI dimensionality reduction
-
-from sklearn.decomposition import TruncatedSVD
-
 lsi = TruncatedSVD(n_components=50, random_state=42) 
 X_train_LSI = lsi.fit_transform(X_train_tfidf)
 X_test_LSI = lsi.transform(X_test_tfidf)
@@ -113,18 +126,13 @@ print(X_test_LSI.shape)
 
 
 # NMF dimensionality reduction
-
-from sklearn.decomposition import NMF
-
 nmf = NMF(n_components=50, random_state=42)
 X_train_NMF = nmf.fit_transform(X_train_tfidf)
 X_test_NMF = nmf.transform(X_test_tfidf)
 print(X_train_NMF.shape)
 print(X_test_NMF.shape)
 
-
 # compare LSI & NMF
-
 # for NMF
 H = nmf.components_
 sum_train_NMF = np.sum(np.array(X_train_tfidf - X_train_NMF.dot(H))**2)
@@ -134,24 +142,7 @@ print(sum_test_NMF)
 
 # for LSI
 
-"""
-QUESTION 6
-"""
-print("----------- QUESTION 6 -----------")
-
-from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import roc_curve
-from sklearn.metrics import auc
-from sklearn.preprocessing import label_binarize
-import itertools
-from scipy import interp
-
-# Plot ROC 
+# Plot ROC, for q4, q5, q6 
 def plot_roc(fpr, tpr):
     fig, ax = plt.subplots()
 
@@ -171,7 +162,7 @@ def plot_roc(fpr, tpr):
     for label in ax.get_xticklabels()+ax.get_yticklabels():
         label.set_fontsize(15)
 
-# Plot the confusion_matrix
+# Plot the confusion_matrix, for q4, q5, q6
 def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
@@ -202,17 +193,159 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.tight_layout()
+    
+"""
+QUESTION 4
+"""
+print("----------- QUESTION 4 -----------")
 
-# Classify by Gaussian Naive Bayes 
-classifierNB = GaussianNB().fit(X_train_LSI, train_dataset.target).predict(X_test_LSI)
+cat_0 = ['comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware']
+cat_1 = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey']
+classes = ['Computer Technology', 'Recreational Activity']
+
+# Classify the dataset into 2 categories
+def classify(dataset):
+    cat = []
+    for i in dataset.target:
+        if(i < 4):
+            cat.append(0)
+        else: 
+            cat.append(1)
+    return(cat)
+
+
+y_train = classify(train_dataset)    
+y_test = classify(test_dataset)              
+
+svm_hard = LinearSVC(C = 1000, random_state = 42)
+svm_soft = LinearSVC(C = 0.0001, random_state = 42)
+
+def question4(svm):
+    svm.fit(X_train_LSI, y_train)	
+    
+    # ----------------------
+    # ROC Curves
+    test_score = svm.decision_function(X_test_LSI)
+    fpr, tpr, threshold = roc_curve(y_test, test_score)
+    plot_roc(fpr, tpr)
+    
+    # ----------------------
+    # Metrics
+    y_test_predict = svm.predict(X_test_LSI)
+    
+    confusionMatrix = confusion_matrix(y_test, y_test_predict)
+    accuracy = accuracy_score(y_test, y_test_predict)
+    recall = recall_score(y_test, y_test_predict)
+    precision = precision_score(y_test, y_test_predict)
+    f1_score = 2/((1/recall) + (1/precision))
+    
+    print('Confusion Matrix: ')
+    plt.figure()
+    plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True, title='Normalized confusion matrix')
+    plt.show()
+    print('Accuracy:', accuracy)
+    print('Recall:', recall)
+    print('Precision:', precision)
+    print('F1-Score:', f1_score)
+
+
+print('\nHard Margin ----------------------------')
+question4(svm_hard)
+print('\nSoft Margin ----------------------------')
+question4(svm_soft)
+
+"""
+QUESTION 5
+"""
+print("----------- QUESTION 5 -----------")
+def logistic_train_plot_score(clf):
+    # train a model
+    clf.fit(X_train_LSI,y_train)
+    
+    # plot ROC curve
+    test_score = clf.decision_function(X_test_LSI)
+    fpr, tpr, threshold = roc_curve(y_test, test_score)
+    plot_roc(fpr, tpr)   
+    
+    # calculate scores
+    y_test_predict = clf.predict(X_test_LSI)
+    
+    confusionMatrix = confusion_matrix(y_test, y_test_predict)
+    accuracy = accuracy_score(y_test, y_test_predict)
+    recall = recall_score(y_test, y_test_predict)
+    precision = precision_score(y_test, y_test_predict)
+    f1_score = 2/((1/recall) + (1/precision))   
+    print('Confusion Matrix: ')
+    plt.figure()
+    plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True, title='Normalized confusion matrix')
+    plt.show()
+    print('Accuracy:', accuracy)
+    print('Recall:', recall)
+    print('Precision:', precision)
+    print('F1:', f1_score)
+
+# ROC curve and scores for logistic regression without regularization
+print("--------ROC curve and scores without regularization--------")
+clf_logistic = LogisticRegression(C=0.00000000001,random_state=42)
+logistic_train_plot_score(clf_logistic)
+print('\n\n\n\n')
+
+
+
+# 5-fold cross validation to find the best C for L1 regularization and L2 regularization
+def score_with_k(pen):
+    score_list = []
+    k_list = range(-3,4)
+    for k in k_list:
+        clf = LogisticRegression(penalty=pen, C=10**k, random_state=42)
+        cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=42)
+        scores = cross_val_score(clf, X_train_LSI, y_train, cv=cv, scoring='f1_macro')
+        avg_score = np.average(scores)
+        score_list.append(avg_score)
+    print("the score list is ",score_list)
+    best_k_loc = np.argmax(score_list)
+    best_k = k_list[best_k_loc]
+    return best_k
+
+# best k for L1-regularization 
+print("--------find the best k for L1 regularization--------")
+best_k_L1 = score_with_k('l1')
+print("the best k for L1 regularization is ",best_k_L1)
+print('\n\n\n\n')
+
+# best k for L2-regularization
+print("--------find the best k for L2 regularization--------")
+best_k_L2 = score_with_k('l2')
+print("the best k for L1 regularization is ",best_k_L2)
+print('\n\n\n\n')
+    
+    
+# ROC curve and scores for logistic regression with L1 regularization
+print("--------ROC curve and scores for L1 regularization with k=1--------")
+clf_logistic_L1 = LogisticRegression(penalty='l1',C=10**best_k_L1, random_state=42)
+logistic_train_plot_score(clf_logistic_L1)
+print('\n\n\n\n')
+
+# ROC curve and scores for logistic regression with L2 regularization
+print("--------ROC curve and scores for L2 regularization with k=1--------")
+clf_logistic_L2 = LogisticRegression(penalty='l2',C=10**best_k_L2, random_state=42)
+logistic_train_plot_score(clf_logistic_L2)
+print('\n\n\n\n')
+
+"""
+QUESTION 6
+"""
+print("----------- QUESTION 6 -----------")
 
 # plot ROC curve
 classifierNB_score = GaussianNB().fit(X_train_LSI, train_dataset.target).predict_proba(X_test_LSI)
 BinaryLabel = label_binarize(test_dataset.target, classes=np.unique(test_dataset.target))  # Binarize the output
 n_classes = BinaryLabel.shape[1]
+
 print("Micro-Average ROC Curve")
 fpr, tpr, _ = roc_curve(BinaryLabel.ravel(), classifierNB_score.ravel())
 plot_roc(fpr, tpr)
+
 print("Marco-Average ROC Curve")
 # Compute ROC curve and ROC area for each class
 fpr = dict()
@@ -227,6 +360,9 @@ for i in range(n_classes):
 mean_tpr /= n_classes
 plot_roc(all_fpr, mean_tpr)
 
+# Classify by Gaussian Naive Bayes 
+classifierNB = GaussianNB().fit(X_train_LSI, train_dataset.target).predict(X_test_LSI)
+
 # Compute confusion matrix
 cnf_matrix_NB = confusion_matrix(test_dataset.target, classifierNB)
 np.set_printoptions(precision=2)
@@ -238,10 +374,252 @@ plt.show()
 
 # Calculate 4 scores 
 accuracy_NB = accuracy_score(test_dataset.target, classifierNB)
-print("The accuracy score is  ", accuracy_NB)
+print("Accuracy: ", accuracy_NB)
 recall_NB = recall_score(test_dataset.target, classifierNB, average='weighted')
-print("The recall score is ",recall_NB)
+print("Recall: ",recall_NB)
 precision_NB = precision_score(test_dataset.target, classifierNB, average='weighted')
-print("The precision score is: ",precision_NB)
+print("Precision: ",precision_NB)
 f1_NB = f1_score(test_dataset.target, classifierNB, average='weighted')
-print("The F1 score is: ",precision_NB)
+print("F1: ",precision_NB)
+
+"""
+QUESTION 8
+"""
+
+print("----------- QUESTION 8 -----------")
+
+# import data and generate LSI-reduced TF-IDF matrix
+categories = ['comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware', 'misc.forsale', 'soc.religion.christian']
+train_dataset = fetch_20newsgroups(subset='train', categories=categories, shuffle=True, random_state=42)
+test_dataset = fetch_20newsgroups(subset='test', categories=categories, shuffle=True, random_state=42)
+
+stop_words_skt = text.ENGLISH_STOP_WORDS
+stop_words_en = stopwords.words('english')
+combined_stopwords = set.union(set(stop_words_en),set(punctuation),set(stop_words_skt))
+
+ps = nltk.stem.PorterStemmer()
+wnl = nltk.wordnet.WordNetLemmatizer()     
+
+def stem_rmv_punc(doc):
+    return (word for word in lemmatize_sent(analyzer(doc)) if word not in combined_stopwords and not word.isdigit())
+
+analyzer = text.CountVectorizer().build_analyzer()
+vectorizer = text.CountVectorizer(min_df=3, stop_words='english', analyzer=stem_rmv_punc, token_pattern = r'(?u)\b[A-Za-z][A-Za-z]+\b')
+
+X_train_counts = vectorizer.fit_transform(train_dataset.data)
+X_train_counts.toarray()
+X_test_counts = vectorizer.transform(test_dataset.data)
+X_test_counts.toarray()
+X_train_tfidf = text.TfidfTransformer().fit_transform(X_train_counts)
+print('Shape of TF-IDF train matrices subset: ')
+print(X_train_tfidf.shape)
+X_test_tfidf = text.TfidfTransformer().fit_transform(X_test_counts)
+print('Shape of TF-IDF test matrices subset: ')
+print(X_test_tfidf.shape)
+
+#LSI: 
+from sklearn.decomposition import TruncatedSVD
+lsi = TruncatedSVD(n_components=50, random_state=42) 
+X_train_LSI = lsi.fit_transform(X_train_tfidf)
+X_test_LSI = lsi.transform(X_test_tfidf)
+
+#NMF:
+from sklearn.decomposition import NMF
+nmf = NMF(n_components=50, random_state=42)
+X_train_NMF = nmf.fit_transform(X_train_tfidf)
+X_test_NMF = nmf.transform(X_test_tfidf)
+
+X_train_target = train_dataset.target
+X_test_target = test_dataset.target
+
+# For plotting confusion matrix and compute metrics: 
+from sklearn.metrics import confusion_matrix
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Spectral):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True Class')
+    plt.xlabel('Predicted Class')
+    plt.tight_layout()
+    
+# Multiclass SVM (one vs. one)
+
+from sklearn import svm
+from sklearn.multiclass import OneVsOneClassifier
+
+print("Multiclass SVM one vs one (with LSI): ")
+
+clf_1v1 = OneVsOneClassifier(svm.SVC(C=1000)).fit(X_train_LSI, X_train_target)
+X_predict_1v1 = clf_1v1.predict(X_test_LSI)
+
+cf_mat = confusion_matrix(X_test_target, X_predict_1v1)
+np.set_printoptions(precision=2)
+
+#Plot confusion matrices -- unnormalized and normalized
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories,
+                      title='Confusion Matrix (1v1 SVM, LSI)')
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories, normalize=True,
+                      title='Confusion Matrix (Normalized, 1v1 SVM, LSI)')
+plt.show()
+
+# Compute Metrics: 
+accuracy = accuracy_score(X_test_target, X_predict_1v1)
+recall = recall_score(X_test_target, X_predict_1v1, average='weighted')
+precision = precision_score(X_test_target, X_predict_1v1, average='weighted')
+f1 = f1_score(X_test_target, X_predict_1v1, average='weighted')
+
+
+print("Accuracy:  ", accuracy)
+print("Recall:    ", recall)
+print("Precision: ", precision)
+print("F1: ", precision_NB)
+
+print("Multiclass SVM one vs one (with NMF): ")
+
+clf_1v1 = OneVsOneClassifier(svm.SVC(C=1000)).fit(X_train_NMF, X_train_target)
+X_predict_1v1 = clf_1v1.predict(X_test_NMF)
+
+cf_mat = confusion_matrix(X_test_target, X_predict_1v1)
+np.set_printoptions(precision=2)
+
+#Plot confusion matrices -- unnormalized and normalized
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories,
+                      title='Confusion Matrix (1v1 SVM, NMF)')
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories, normalize=True,
+                      title='Confusion Matrix (Normalized, 1v1 SVM, NMF)')
+plt.show()
+
+# Compute Metrics: 
+accuracy = accuracy_score(X_test_target, X_predict_1v1)
+recall = recall_score(X_test_target, X_predict_1v1, average='weighted')
+precision = precision_score(X_test_target, X_predict_1v1, average='weighted')
+f1 = f1_score(X_test_target, X_predict_1v1, average='weighted')
+
+print("Accuracy:  ", accuracy)
+print("Recall:    ",recall)
+print("Precision: ",precision)
+print("F1: ", f1)
+
+# Multiclass SVM (one vs. the rest)
+
+from sklearn.multiclass import OneVsRestClassifier
+
+print("Multiclass SVM one vs the rest (with LSI): ")
+
+clf_1vR = OneVsRestClassifier(svm.SVC(C=1000)).fit(X_train_LSI, X_train_target)
+X_predict_1vR = clf_1vR.predict(X_test_LSI)
+
+cf_mat = confusion_matrix(X_test_target, X_predict_1vR)
+np.set_printoptions(precision=2)
+
+#Plot confusion matrices -- unnormalized and normalized
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories,
+                      title='Confusion Matrix (1vR SVM, LSI)')
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories, normalize=True,
+                      title='Confusion Matrix (Normalized, 1vR SVM, LSI)')
+plt.show()
+
+# Compute Metrics: 
+accuracy = accuracy_score(X_test_target, X_predict_1vR)
+recall = recall_score(X_test_target, X_predict_1vR, average='weighted')
+precision = precision_score(X_test_target, X_predict_1vR, average='weighted')
+f1 = f1_score(X_test_target, X_predict_1v1, average='weighted')
+
+print("Accuracy:  ", accuracy)
+print("Recall:    ", recall)
+print("Precision: ", precision)
+print("F1: ", f1)
+
+print("Multiclass SVM one vs the rest (with NMF): ")
+
+clf_1vR = OneVsRestClassifier(svm.SVC(C=1000)).fit(X_train_NMF, X_train_target)
+X_predict_1vR = clf_1vR.predict(X_test_NMF)
+
+cf_mat = confusion_matrix(X_test_target, X_predict_1vR)
+np.set_printoptions(precision=2)
+
+#Plot confusion matrices -- unnormalized and normalized
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories,
+                      title='Confusion Matrix (1vR SVM, NMF)')
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories, normalize=True,
+                      title='Confusion Matrix (Normalized, 1vR SVM, NMF)')
+plt.show()
+
+# Compute Metrics: 
+accuracy = accuracy_score(X_test_target, X_predict_1vR)
+recall = recall_score(X_test_target, X_predict_1vR, average='weighted')
+precision = precision_score(X_test_target, X_predict_1vR, average='weighted')
+f1 = f1_score(X_test_target, X_predict_1v1, average='weighted')
+
+print("Accuracy:  ", accuracy)
+print("Recall:    ",recall)
+print("Precision: ",precision)
+print("F1: ", f1)
+
+# Multiclass Naive Bayes with NMF
+
+from sklearn.naive_bayes import MultinomialNB
+print("Multiclass Naive Bayes (with NMF): ")
+
+mnb = MultinomialNB()
+mnb.fit(X_train_NMF, X_train_target)
+X_predict_NB = mnb.predict(X_test_NMF)
+
+cf_mat = confusion_matrix(X_test_target, X_predict_NB)
+np.set_printoptions(precision=2)
+
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories,
+                      title='Confusion Matrix (NB)')
+
+plt.figure()
+plot_confusion_matrix(cf_mat, classes=categories, normalize=True,
+                      title='Confusion Matrix (Normalized, NB)')
+
+plt.show()
+
+# Compute Metrics: 
+accuracy = accuracy_score(X_test_target, X_predict_NB)
+recall = recall_score(X_test_target, X_predict_NB, average='weighted')
+precision = precision_score(X_test_target, X_predict_NB, average='weighted')
+f1 = f1_score(X_test_target, X_predict_1v1, average='weighted')
+print("Accuracy:  ", accuracy)
+print("Recall:    ", recall)
+print("Precision: ", precision)
+print("F1 :", f1)
+
