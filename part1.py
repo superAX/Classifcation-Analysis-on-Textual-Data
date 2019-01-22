@@ -159,6 +159,7 @@ print(sum_test_NMF)
 QUESTION 4
 """
 print("----------- QUESTION 4 -----------")
+print("--- PART A ---")
 from sklearn.svm import LinearSVC
 from sklearn.metrics import auc, confusion_matrix, recall_score, roc_curve, precision_score, accuracy_score
 
@@ -182,14 +183,14 @@ X_train_cat = classify(train_dataset)
 X_test_cat = classify(test_dataset)              
 
 svm_hard = LinearSVC(C = 1000)
-svm_soft = LinearSVC(C = 1)
+svm_soft = LinearSVC(C = 0.0001)
 
-def question4(svm):
-    svm.fit(X_train_LSI, X_train_cat)	
+def question4(svm_train):
+    svm_train.fit(X_train_LSI, X_train_cat)	
     
     # ----------------------
     # ROC Curves
-    test_score = svm_hard.decision_function(X_test_LSI)
+    test_score = svm_train.decision_function(X_test_LSI)
     FPR, TPR, threshold = roc_curve(X_test_cat, test_score)
     
     # Plot ROC
@@ -205,7 +206,7 @@ def question4(svm):
     
     # ----------------------
     # Metrics
-    test_predict = svm_hard.predict(X_test_LSI)
+    test_predict = svm_train.predict(X_test_LSI)
     
     confusionMatrix = confusion_matrix(X_test_cat, test_predict)
     accuracy = accuracy_score(X_test_cat, test_predict)
@@ -225,3 +226,26 @@ print('\nHard Margin ----------------------------')
 question4(svm_hard)
 print('\nSoft Margin ----------------------------')
 question4(svm_soft)
+print()
+
+print("--- PART B: Cross-Validation ---")
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import ShuffleSplit
+
+C_best = 0;
+max_score = 0;
+
+for i in range(-3, 4): 
+    C = 10**i;
+    clf = LinearSVC(C = C);
+    scores = cross_val_score(clf, X_train_LSI, train_dataset.target, cv=5).mean()
+    #print('Mean score: ', scores)
+    
+    if(scores > max_score):
+        max_score = scores
+        C_best = C
+    
+print('Best value of \u03B3 = ', C_best, ' is obtained with cross validation score of ', max_score)
+svm_best = LinearSVC(C = C_best)
+print('\nBest SVM ----------------------------')
+question4(svm_best)
