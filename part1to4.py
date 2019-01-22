@@ -21,17 +21,17 @@ print("----------- QUESTION 1 -----------")
 from matplotlib import pyplot as plt
 
 newsgroups_train = fetch_20newsgroups(subset='train')
-dictt = {}
+cat_Ndocs = {}
 for i in newsgroups_train.target_names:
 		training_data = fetch_20newsgroups(subset='train', categories=[i])
-		dictt[i] = len(training_data.data)
+		cat_Ndocs[i] = len(training_data.data)
 
 fig,ax = plt.subplots()
-plt.bar(list(newsgroups_train.target_names), list(dictt.values()))
-labels = ax.get_xticklabels()
-plt.setp(labels, rotation=20, fontsize=10)
-plt.xlabel('Categories')
-plt.ylabel('# Documents')
+plt.barh(list(newsgroups_train.target_names), list(cat_Ndocs.values()))
+#labels = ax.get_yticklabels()
+#plt.setp(labels, rotation=20, fontsize=10)
+plt.xlabel('No. of Documents')
+plt.ylabel('Categories')
 plt.title('Histogram of training documents')
 plt.show()
 
@@ -249,3 +249,9 @@ print('Best value of \u03B3 = ', C_best, ' is obtained with cross validation sco
 svm_best = LinearSVC(C = C_best)
 print('\nBest SVM ----------------------------')
 question4(svm_best)
+
+
+# TO DO:
+# - Change LinearSVC to SVC()
+# - Fix bug question 2: there should be less words for test dataset
+# - Fix bug question 4: weird results for Soft Margin
