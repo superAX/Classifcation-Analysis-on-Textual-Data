@@ -133,6 +133,8 @@ print(X_train_NMF.shape)
 print(X_test_NMF.shape)
 
 # compare LSI & NMF
+# for LSI
+
 # for NMF
 H = nmf.components_
 sum_train_NMF = np.sum(np.array(X_train_tfidf - X_train_NMF.dot(H))**2)
@@ -140,7 +142,6 @@ sum_test_NMF = np.sum(np.array(X_test_tfidf - X_test_NMF.dot(H))**2)
 print(sum_train_NMF)
 print(sum_test_NMF)
 
-# for LSI
 
 # Plot ROC, for q4, q5, q6 
 def plot_roc(fpr, tpr):
@@ -193,17 +194,11 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.tight_layout()
-    
-"""
-QUESTION 4
-"""
-print("----------- QUESTION 4 -----------")
-
-cat_0 = ['comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware']
-cat_1 = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey']
-classes = ['Computer Technology', 'Recreational Activity']
 
 # Classify the dataset into 2 categories
+cat_0 = ['comp.graphics', 'comp.os.ms-windows.misc', 'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware']
+cat_1 = ['rec.autos', 'rec.motorcycles', 'rec.sport.baseball', 'rec.sport.hockey']
+classes = ['Computer Technology', 'Recreational Activity']    
 def classify(dataset):
     cat = []
     for i in dataset.target:
@@ -215,7 +210,12 @@ def classify(dataset):
 
 
 y_train = classify(train_dataset)    
-y_test = classify(test_dataset)              
+y_test = classify(test_dataset)            
+    
+"""
+QUESTION 4
+"""
+print("----------- QUESTION 4 -----------")  
 
 svm_hard = LinearSVC(C = 1000, random_state = 42)
 svm_soft = LinearSVC(C = 0.0001, random_state = 42)
@@ -288,9 +288,7 @@ def logistic_train_plot_score(clf):
 print("--------ROC curve and scores without regularization--------")
 clf_logistic = LogisticRegression(C=0.00000000001,random_state=42)
 logistic_train_plot_score(clf_logistic)
-print('\n\n\n\n')
-
-
+print('\n')
 
 # 5-fold cross validation to find the best C for L1 regularization and L2 regularization
 def score_with_k(pen):
@@ -338,49 +336,38 @@ QUESTION 6
 print("----------- QUESTION 6 -----------")
 
 # plot ROC curve
-classifierNB_score = GaussianNB().fit(X_train_LSI, train_dataset.target).predict_proba(X_test_LSI)
-BinaryLabel = label_binarize(test_dataset.target, classes=np.unique(test_dataset.target))  # Binarize the output
-n_classes = BinaryLabel.shape[1]
-
-print("Micro-Average ROC Curve")
-fpr, tpr, _ = roc_curve(BinaryLabel.ravel(), classifierNB_score.ravel())
+classifierNB_score = GaussianNB().fit(X_train_LSI, y_train).predict_proba(X_test_LSI)
+fpr, tpr, _ = roc_curve(y_test, classifierNB_score[:,1])
 plot_roc(fpr, tpr)
 
-print("Marco-Average ROC Curve")
-# Compute ROC curve and ROC area for each class
-fpr = dict()
-tpr = dict()
-for i in range(n_classes):
-    fpr[i], tpr[i], _ = roc_curve(BinaryLabel[:, i], classifierNB_score[:, i])
-
-all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
-mean_tpr = np.zeros_like(all_fpr)
-for i in range(n_classes):
-    mean_tpr += interp(all_fpr, fpr[i], tpr[i])
-mean_tpr /= n_classes
-plot_roc(all_fpr, mean_tpr)
-
 # Classify by Gaussian Naive Bayes 
-classifierNB = GaussianNB().fit(X_train_LSI, train_dataset.target).predict(X_test_LSI)
+classifierNB = GaussianNB().fit(X_train_LSI, y_train).predict(X_test_LSI)
 
 # Compute confusion matrix
-cnf_matrix_NB = confusion_matrix(test_dataset.target, classifierNB)
+cnf_matrix_NB = confusion_matrix(y_test, classifierNB)
 np.set_printoptions(precision=2)
 
 # Plot normalized confusion matrix
 plt.figure()
-plot_confusion_matrix(cnf_matrix_NB, classes=test_dataset.target_names, normalize=True, title='Normalized confusion matrix')
+plot_confusion_matrix(cnf_matrix_NB, classes=classes, normalize=True, title='Normalized confusion matrix')
 plt.show()
 
 # Calculate 4 scores 
-accuracy_NB = accuracy_score(test_dataset.target, classifierNB)
+accuracy_NB = accuracy_score(y_test, classifierNB)
 print("Accuracy: ", accuracy_NB)
-recall_NB = recall_score(test_dataset.target, classifierNB, average='weighted')
+recall_NB = recall_score(y_test, classifierNB, average='weighted')
 print("Recall: ",recall_NB)
-precision_NB = precision_score(test_dataset.target, classifierNB, average='weighted')
+precision_NB = precision_score(y_test, classifierNB, average='weighted')
 print("Precision: ",precision_NB)
-f1_NB = f1_score(test_dataset.target, classifierNB, average='weighted')
+f1_NB = f1_score(y_test, classifierNB, average='weighted')
 print("F1: ",precision_NB)
+print('\n\n\n\n')
+
+"""
+QUESTION 7
+"""
+print("----------- QUESTION 7 -----------")
+from sklearn.pipeline import Pipeline
 
 """
 QUESTION 8
@@ -431,46 +418,8 @@ X_test_NMF = nmf.transform(X_test_tfidf)
 
 X_train_target = train_dataset.target
 X_test_target = test_dataset.target
-
-# For plotting confusion matrix and compute metrics: 
-from sklearn.metrics import confusion_matrix
-
-def plot_confusion_matrix(cm, classes,
-                          normalize=False,
-                          title='Confusion matrix',
-                          cmap=plt.cm.Spectral):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    print(cm)
-
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
-
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    plt.ylabel('True Class')
-    plt.xlabel('Predicted Class')
-    plt.tight_layout()
     
 # Multiclass SVM (one vs. one)
-
 from sklearn import svm
 from sklearn.multiclass import OneVsOneClassifier
 
