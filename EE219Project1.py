@@ -25,29 +25,27 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score
 from sklearn.metrics import roc_curve
 from sklearn.metrics import auc
-from sklearn.preprocessing import label_binarize
 import itertools
-from scipy import interp
 plt.rcParams['figure.figsize'] = [12, 8]  #set image size for display
 
 """
 QUESTION 1
 """
-
 print("----------- QUESTION 1 -----------")
-newsgroups_train = fetch_20newsgroups(subset='train',random_state=42)
-dictt = {}
-for i in newsgroups_train.target_names:
-		training_data = fetch_20newsgroups(subset='train', categories=[i],random_state=42)
-		dictt[i] = len(training_data.data)
+from matplotlib import pyplot as plt
 
+newsgroups_train = fetch_20newsgroups(subset='train')
+cat_Ndocs = {}
+for i in newsgroups_train.target_names:
+		training_data = fetch_20newsgroups(subset='train', categories=[i])
+		cat_Ndocs[i] = len(training_data.data)
 
 fig,ax = plt.subplots()
-plt.bar(list(newsgroups_train.target_names), list(dictt.values()))
-labels = ax.get_xticklabels()
-plt.setp(labels, rotation=20, fontsize=10)
-plt.xlabel('Categories')
-plt.ylabel('# Documents')
+plt.barh(list(newsgroups_train.target_names), list(cat_Ndocs.values()))
+#labels = ax.get_yticklabels()
+#plt.setp(labels, rotation=20, fontsize=10)
+plt.xlabel('No. of Documents')
+plt.ylabel('Categories')
 plt.title('Histogram of training documents')
 plt.show()
 
@@ -210,12 +208,12 @@ def classify(dataset):
 
 
 y_train = classify(train_dataset)    
-y_test = classify(test_dataset)            
-    
+y_test = classify(test_dataset) 
+           
 """
 QUESTION 4
 """
-print("----------- QUESTION 4 -----------")  
+print("----------- QUESTION 4 -----------")           
 
 svm_hard = LinearSVC(C = 1000, random_state = 42)
 svm_soft = LinearSVC(C = 0.0001, random_state = 42)
@@ -241,7 +239,8 @@ def question4(svm):
     
     print('Confusion Matrix: ')
     plt.figure()
-    plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True, title='Normalized confusion matrix')
+    #plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True, title='Normalized confusion matrix')
+    plot_confusion_matrix(confusionMatrix, classes=classes,title='confusion matrix without normalization')
     plt.show()
     print('Accuracy:', accuracy)
     print('Recall:', recall)
@@ -253,6 +252,26 @@ print('\nHard Margin ----------------------------')
 question4(svm_hard)
 print('\nSoft Margin ----------------------------')
 question4(svm_soft)
+
+print("--- PART B: Cross-Validation ---")
+
+C_best = 0;
+max_score = 0;
+
+for i in range(-3, 4): 
+    C = 10**i;
+    clf = LinearSVC(C = C,random_state=42);
+    scores = cross_val_score(clf, X_train_LSI, train_dataset.target, cv=5).mean()
+    #print('Mean score: ', scores)
+    
+    if(scores > max_score):
+        max_score = scores
+        C_best = C
+    
+print('Best value of \u03B3 = ', C_best, ' is obtained with cross validation score of ', max_score)
+svm_best = LinearSVC(C = C_best,random_state=42)
+print('\nBest SVM ----------------------------')
+question4(svm_best)
 
 """
 QUESTION 5
@@ -277,7 +296,8 @@ def logistic_train_plot_score(clf):
     f1_score = 2/((1/recall) + (1/precision))   
     print('Confusion Matrix: ')
     plt.figure()
-    plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True, title='Normalized confusion matrix')
+    plot_confusion_matrix(confusionMatrix, classes=classes, title='confusion matrix without normalization')
+    #plot_confusion_matrix(confusionMatrix, classes=classes, normalize=True,title='normalized confusion matrix')
     plt.show()
     print('Accuracy:', accuracy)
     print('Recall:', recall)
@@ -288,7 +308,9 @@ def logistic_train_plot_score(clf):
 print("--------ROC curve and scores without regularization--------")
 clf_logistic = LogisticRegression(C=0.00000000001,random_state=42)
 logistic_train_plot_score(clf_logistic)
-print('\n')
+print('\n\n\n\n')
+
+
 
 # 5-fold cross validation to find the best C for L1 regularization and L2 regularization
 def score_with_k(pen):
@@ -328,7 +350,6 @@ print('\n\n\n\n')
 print("--------ROC curve and scores for L2 regularization with k=1--------")
 clf_logistic_L2 = LogisticRegression(penalty='l2',C=10**best_k_L2, random_state=42)
 logistic_train_plot_score(clf_logistic_L2)
-print('\n\n\n\n')
 
 """
 QUESTION 6
