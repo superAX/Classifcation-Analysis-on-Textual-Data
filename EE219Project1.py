@@ -131,7 +131,13 @@ print(X_train_NMF.shape)
 print(X_test_NMF.shape)
 
 # compare LSI & NMF
+
 # for LSI
+VT = lsi.components_
+sum_train_LSI = np.sum(np.square(X_train_tfidf - X_train_LSI.dot(VT)))
+sum_test_LSI = np.sum(np.square(X_test_tfidf - X_test_LSI.dot(VT)))
+print(sum_train_LSI)
+print(sum_test_LSI)
 
 # for NMF
 H = nmf.components_
