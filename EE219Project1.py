@@ -312,7 +312,7 @@ def logistic_train_plot_score(clf):
 
 # ROC curve and scores for logistic regression without regularization
 print("--------ROC curve and scores without regularization--------")
-clf_logistic = LogisticRegression(C=0.00000000001,random_state=42)
+clf_logistic = LogisticRegression(C=10**8,random_state=42)
 logistic_train_plot_score(clf_logistic)
 print('\n\n\n\n')
 
